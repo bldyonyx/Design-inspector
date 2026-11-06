@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "description": "Inspect colors and typography on web pages.",
   "action": {
-    "default_title": "Design Inspector",
-    "default_popup": "index.html"
-  }
+    "default_title": "Design Inspector"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "minimum_chrome_version": "116"
 }

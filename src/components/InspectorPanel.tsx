@@ -1,3 +1,4 @@
+import { FontInspectionTest } from './FontInspectionTest';
 import { PalettePicker } from './PalettePicker';
 import type { useSavedPalettes } from '../hooks/useSavedPalettes';
 import { Pipette, Type } from 'lucide-react';
@@ -54,6 +55,7 @@ export function InspectorPanel({ mode, color, palettes }: InspectorPanelProps) {
         <span>{isColors ? (color.isPicking ? 'Picking a color…' : 'Pick a color') : 'Inspect a font'}</span>
         {!isColors && <span>Coming soon</span>}
       </button>
+      {!isColors && <FontInspectionTest />}
       {isColors && (
         <>
           {!color.supported && (

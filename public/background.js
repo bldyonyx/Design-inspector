@@ -43,10 +43,61 @@ async function openInspector() {
   inspectorWindowId = window?.id;
 }
 
-chrome.action.onClicked.addListener(() => {
-  // Coalesce clicks while creation/discovery is in flight.
-  opening ??= openInspector()
+// Session-only targeting survives worker suspension, never browser restarts.
+// The toolbar event supplies the intended tab; inspector focus is irrelevant.
+const fontTargetKey = 'designInspector.fontTarget.session.v1';
+let targetQueue = Promise.resolve();
+let targetUnavailable = false;
+const updateTarget = (operation) => {
+  const result = targetQueue.then(operation);
+  targetQueue = result.catch(() => undefined);
+  return result;
+};
+
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status !== 'loading' && change.url === undefined) return;
+  void updateTarget(async () => {
+    const saved = (await chrome.storage.session.get(fontTargetKey))[fontTargetKey];
+    if (saved?.id === tabId) await chrome.storage.session.remove(fontTargetKey);
+  }).catch(() => { targetUnavailable = true; });
+});
+chrome.tabs.onRemoved.addListener(tabId => {
+  void updateTarget(async () => {
+    const saved = (await chrome.storage.session.get(fontTargetKey))[fontTargetKey];
+    if (saved?.id === tabId) await chrome.storage.session.remove(fontTargetKey);
+  }).catch(() => { targetUnavailable = true; });
+});
+
+chrome.action.onClicked.addListener(tab => {
+  const targetSaved = updateTarget(async () => {
+    targetUnavailable = true;
+    // Clear the previous target before replacing it; invalid clicks fail closed.
+    await chrome.storage.session.remove(fontTargetKey);
+    if (!Number.isSafeInteger(tab?.id) || typeof tab.url !== 'string') { targetUnavailable = false; return; }
+    await chrome.storage.session.set({ [fontTargetKey]: {
+      id: tab.id, windowId: tab.windowId, url: tab.url,
+      token: `${Date.now()}-${Math.random()}`,
+    } });
+    targetUnavailable = false;
+  }).catch(() => { targetUnavailable = true; });
+  opening ??= targetSaved.then(openInspector)
     .catch((error) => console.error('Could not open Design Inspector:', error))
     .finally(() => { opening = undefined; });
-  return opening;
+  return Promise.all([opening, targetSaved]);
+});
+
+// Only our own top-level inspector page can request the captured target. Wait
+// for capture/invalidation work before responding; never accept a requested ID.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'designInspector.fontTarget.get') return false;
+  if (sender.id !== chrome.runtime.id || sender.url !== inspectorUrl || (sender.frameId !== undefined && sender.frameId !== 0)) {
+    sendResponse({ ok: false, error: 'Font targeting is only available in the inspector window.' });
+    return false;
+  }
+  void targetQueue.then(async () => {
+    if (targetUnavailable) throw new Error('Target unavailable');
+    const data = await chrome.storage.session.get(fontTargetKey);
+    sendResponse({ ok: true, target: data[fontTargetKey] ?? null });
+  }).catch(() => sendResponse({ ok: false, error: 'The target tab is unavailable. Click the toolbar icon on the webpage again.' }));
+  return true;
 });

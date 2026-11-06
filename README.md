@@ -565,3 +565,16 @@ exports. The catalog works entirely offline. Regenerate with
 `node scripts/curateColorNames.mjs`; benchmark with
 `node scripts/benchmarkColorNames.mjs`. No new dependencies, permissions, schema
 changes, or UI changes were introduced.
+
+## Phase 7.1 — font inspection communication prototype
+
+The Fonts tab now includes a small DEVELOPMENT TEST section with **Test font
+inspection**. It uses the toolbar-clicked webpage tab, not the active tab of the
+independent inspector window. The manifest adds only `activeTab` and `scripting`;
+existing storage permissions/data and color features are preserved.
+
+Architecture, target lifecycle, API/permission rationale, test coverage, exact
+Opera GX manual steps, and Phase 7.2 boundaries are in
+[docs/font-inspection.md](docs/font-inspection.md). Native toolbar-granted access
+and end-to-end Opera GX injection remain manual checks; automated browser tests
+use mocked Chrome transport and execute the bundled function on real fixture DOM.

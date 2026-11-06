@@ -14,8 +14,23 @@ function browser() {
   let focused;
   let click;
   let failCreate = false;
+  let update, remove, message;
+  let sessionFails = false;
+  const session = {};
+  const defaultTab = { id: 90, windowId: 80, url: 'https://example.com/' };
   const chrome = {
+    storage: { session: {
+      get: async key => { if (sessionFails) throw Error('Unavailable'); return { [key]: session[key] }; },
+      set: async values => Object.assign(session, values),
+      remove: async key => { if (sessionFails) throw Error('Unavailable'); delete session[key]; },
+    } },
+    tabs: {
+      onUpdated: { addListener: listener => { update = listener; } },
+      onRemoved: { addListener: listener => { remove = listener; } },
+    },
     runtime: {
+      id: 'test',
+      onMessage: { addListener: listener => { message = listener; } },
       getURL: () => url,
       getContexts: async (filter) => {
         assert.equal(filter.documentUrls[0], url);
@@ -48,7 +63,12 @@ function browser() {
   restart();
   return {
     windows, errors, restart,
-    click: () => click(),
+    click: (tab = defaultTab) => click(tab),
+    session,
+    getTarget: (sender = { id: 'test', url, frameId: 0 }) => new Promise(resolve => message({ type: 'designInspector.fontTarget.get' }, sender, resolve)),
+    set sessionFails(value) { sessionFails = value; },
+    update: async (id, change) => { update(id, change); await new Promise(resolve => setImmediate(resolve)); },
+    closeTab: async id => { remove(id); await new Promise(resolve => setImmediate(resolve)); },
     get creates() { return creates; },
     get focused() { return focused; },
     set failCreate(value) { failCreate = value; },
@@ -69,7 +89,7 @@ test('creates once, focuses, restores minimized window, and reopens after close'
   assert.equal(b.creates, 2);
 });
 
-test('rediscovers window after service worker restart without storage', async () => {
+test('rediscovers window after service worker restart without local storage', async () => {
   const b = browser();
   await b.click();
   b.restart();
@@ -86,4 +106,35 @@ test('handles failed creation and permits a later retry', async () => {
   b.failCreate = false;
   await b.click();
   assert.equal(b.creates, 1);
+});
+
+
+test('captures the clicked tab across windows and worker restarts, never inspector focus', async () => {
+  const b = browser(); const key = 'designInspector.fontTarget.session.v1';
+  await b.click({ id: 12, windowId: 1, url: 'https://one.example/' });
+  assert.equal(b.session[key].id, 12);
+  b.restart(); assert.equal(b.session[key].id, 12);
+  await b.click({ id: 24, windowId: 2, url: 'https://two.example/' });
+  assert.equal(b.session[key].id, 24); assert.equal(b.session[key].windowId, 2);
+  assert.equal(b.creates, 1);
+});
+
+test('invalidates on target navigation/close, ignores unrelated tabs, clears invalid toolbar clicks', async () => {
+  const b = browser(); const key = 'designInspector.fontTarget.session.v1';
+  await b.click(); await b.update(999, { status: 'loading' }); assert.ok(b.session[key]);
+  await b.update(90, { status: 'loading' }); assert.equal(b.session[key], undefined);
+  await b.click(); await b.closeTab(90); assert.equal(b.session[key], undefined);
+  await b.click(); await b.click({}); assert.equal(b.session[key], undefined);
+});
+
+
+test('target messages wait for pending capture, reject page senders, and fail closed on session errors', async () => {
+  const b = browser();
+  const clicked = b.click({ id: 24, windowId: 2, url: 'https://two.example/' });
+  const response = await b.getTarget(); await clicked;
+  assert.equal(response.ok, true); assert.equal(response.target.id, 24);
+  assert.equal((await b.getTarget({ id: 'test', url: 'https://two.example/', frameId: 0 })).ok, false);
+  b.sessionFails = true; await b.click();
+  assert.equal((await b.getTarget()).ok, false);
+  assert.equal(b.creates, 1); // Color UI still opens/focuses when session targeting fails.
 });

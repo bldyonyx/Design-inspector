@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { copyHex, normalizeHex } from '../utils/color';
+import { normalizeHex } from '../utils/color';
 
 interface EyeDropperInstance {
   open(options: { signal: AbortSignal }): Promise<{ sRGBHex: string }>;
@@ -13,17 +13,10 @@ export function useEyeDropper() {
   const supported = typeof (window as EyeDropperWindow).EyeDropper === 'function';
   const [hex, setHex] = useState<string | null>(null);
   const [isPicking, setIsPicking] = useState(false);
-  const [isCopying, setIsCopying] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const confirmationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resetConfirmation = () => {
-    if (confirmationTimer.current !== null) clearTimeout(confirmationTimer.current);
-    confirmationTimer.current = null;
-    setCopied(false);
-  };
+  const [selectionId, setSelectionId] = useState(0);
+  const [selectionAnnouncement, setSelectionAnnouncement] = useState('');
   const [message, setMessage] = useState('');
   const controller = useRef<AbortController | null>(null);
-  const copying = useRef(false);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -31,14 +24,13 @@ export function useEyeDropper() {
     return () => {
       mounted.current = false;
       controller.current?.abort();
-      if (confirmationTimer.current !== null) clearTimeout(confirmationTimer.current);
     };
   }, []);
 
   // Called directly by the click handler; no await precedes open(), preserving
   // the transient user activation required by the native API.
   const pick = async () => {
-    if (controller.current || copying.current) return;
+    if (controller.current) return;
     const EyeDropper = (window as EyeDropperWindow).EyeDropper;
     if (!EyeDropper) {
       setMessage('Color picking is not supported in this browser.');
@@ -48,13 +40,14 @@ export function useEyeDropper() {
     controller.current = operation;
     setIsPicking(true);
     setMessage('');
+    setSelectionAnnouncement('');
     try {
       const result = await new EyeDropper().open({ signal: operation.signal });
       const value = normalizeHex(result.sRGBHex);
       if (mounted.current) {
-        resetConfirmation();
+        setSelectionId(id => id + 1);
         setHex(value);
-        setMessage(`Selected ${value}.`);
+        setSelectionAnnouncement(`Selected ${value}.`);
       }
     } catch (error) {
       if (mounted.current) {
@@ -68,29 +61,5 @@ export function useEyeDropper() {
     }
   };
 
-  const copy = async () => {
-    if (!hex || copying.current || controller.current) return;
-    resetConfirmation();
-    copying.current = true;
-    setIsCopying(true);
-    setMessage('');
-    try {
-      await copyHex(hex);
-      if (mounted.current) {
-        setCopied(true);
-        setMessage(`Copied ${hex}.`);
-        confirmationTimer.current = setTimeout(() => {
-          confirmationTimer.current = null;
-          setCopied(false);
-        }, 2000);
-      }
-    } catch {
-      if (mounted.current) setMessage('Could not copy. Select the HEX value and copy it manually.');
-    } finally {
-      copying.current = false;
-      if (mounted.current) setIsCopying(false);
-    }
-  };
-
-  return { supported, hex, copied, isPicking, isCopying, message, pick, copy };
+  return { supported, hex, selectionId, isPicking, message, selectionAnnouncement, pick };
 }

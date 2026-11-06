@@ -142,3 +142,66 @@ the browser and OS. Clipboard writes may be denied by browser policy or focus
 requirements; no clipboard permission or fallback API is requested. Native
 sampling and actual clipboard contents have not been verified in Opera GX by the
 automated checks.
+
+## Color Inspector phase 2 — HEX, RGB, HSL
+
+The selected-color details now show three selectable, labeled values. Each row
+copies only its formatted value and has an independent two-second check-icon
+confirmation, announced through a polite live region. A new selection resets all
+confirmations, even if the sampled color is unchanged. Clipboard logic is shared;
+failed writes never show a success icon. Timers and pending UI updates are cleaned
+up when details unmount. Nothing is saved.
+
+Pure utilities in `src/utils/color.ts` provide `normalizeHex`, `hexToRgb`,
+`rgbToHsl`, `formatRgb`, and `formatHsl`. HEX requires exactly six digits and a
+leading `#`; invalid input throws. RGB channels must be integers in 0–255.
+HSL uses standard sRGB channel min/max conversion, rounds hue and percentages to
+whole numbers, assigns hue 0 to grays, and wraps rounded hue into 0–359. Invalid
+RGB/HSL inputs throw RangeError. Shared `copyText` replaces the HEX-only helper.
+Whole-number HSL is a rounded representation and may not round-trip exactly.
+
+Verification completed: build, lint, four color utility tests (including all
+requested reference colors and hue edges), three window lifecycle tests, and
+headless Chrome UI checks with mocked native APIs. UI checks covered all three
+copy values, independent confirmation icons, two-second reset, resetting on a new
+selection of the same color, denied clipboard access, both sampling triggers,
+cancellation, disabled Fonts, widths 280/320/380/500/650/800px, and document
+scrolling in a 300px-high viewport.
+
+Opera GX manual regression: reload the built extension and reopen the inspector;
+sample a webpage using each trigger; copy each format and paste into a text editor;
+confirm the row values match, check icons reset after two seconds or a new pick,
+and Escape preserves the previous result. Recheck narrow resizing and keyboard
+focus for each copy button. Native sampling and real clipboard writes were not
+retested by the automated mocks. No permissions, dependencies, or window behavior
+changed in phase 2.
+
+## Closest color names
+
+The summary uses a compact offline dataset of **68 original, hand-curated naming
+anchors** in `src/data/colorNames.ts`. Familiar descriptive names were assigned to
+fixed swatches for this project; the list is not imported from a third-party
+color dictionary and is not an official naming standard. Arbitrary sampled colors
+receive the closest anchor name, not a dynamically generated name. Even a dataset
+match means only that the HEX equals an anchor, not an official universal name.
+
+`src/utils/colorName.ts` linearizes sRGB channels, converts them to OKLab using
+[Björn Ottosson's public-domain matrices](https://bottosson.github.io/posts/oklab/),
+and minimizes squared Euclidean distance in OKLab. Anchor coordinates are
+precomputed once; dataset order breaks ties deterministically. The lookup returns
+the name, anchor HEX, and an exact flag that is true only for equal normalized HEX
+values. Invalid inputs throw the same validation error as existing conversions.
+No runtime network requests, dependencies, storage, or permissions are involved.
+Names are approximate and subjective; coverage is limited to the curated list.
+
+Selection success is announced in a visually hidden live region rather than
+repeated below the details. Cancellation, unsupported-browser feedback, sampling
+errors, clipboard errors, and clipboard success feedback remain available.
+
+`node tests/colorName.test.mjs` checks every exact anchor, approximate matches,
+black/white/grays, determinism, invalid inputs, and OKLab reference values.
+Existing color and window lifecycle tests also pass. Mocked browser checks cover
+the name summary, hidden selection announcement, disclosure keyboard behavior,
+copy confirmations, and layouts from 280 to 800px without chevron overlap or
+horizontal overflow. Native EyeDropper and real clipboard behavior remain manual
+Opera GX checks; their interaction paths were not changed.

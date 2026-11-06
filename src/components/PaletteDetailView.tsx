@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { useSavedPalettes } from '../hooks/useSavedPalettes';
 import type { SavedPalette } from '../storage/savedPalettes';
 import { copyText } from '../utils/color';
+import { PaletteExport } from './PaletteExport';
 import { PaletteCreateForm } from './PaletteCreateForm';
 
 function PaletteColorRow({ hex, disabled, onSelect, onRemove, announce }: {
@@ -92,5 +93,6 @@ export function PaletteDetailView({ palette, palettes, onBack, onDeleted, onSele
         if (result && mounted.current) { clearTimeout(timer.current); setUndo({ hex, index }); setMessage(`Removed ${hex}.`); focusHeading(); timer.current = setTimeout(() => setUndo(null), 5000); }
         if (!result && mounted.current) focusHeading();
       }} />)}</ul> : <div className="archive-empty"><p>No colors saved yet. Add colors from the inspector.</p><div aria-hidden="true" className="archive-dots" /></div>}
+    <PaletteExport key={`${palette.id}-${palette.updatedAt}`} palette={palette} disabled={blocked || confirming || renaming} />
   </section>;
 }

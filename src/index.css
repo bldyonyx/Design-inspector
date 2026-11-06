@@ -689,3 +689,9 @@ button:focus-visible {
 .palette-option[aria-pressed="true"] { border-color: var(--primary-text); }
 .palette-option:disabled { cursor: not-allowed; }
 .palette-color-row { display: grid; }
+
+.palette-export { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.palette-export > .editorial-label { margin: 0 0 12px; text-transform: uppercase; }
+.export-action { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.export-downloads { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 8px; }
+.export-downloads .secondary-action { margin: 0; }

@@ -480,3 +480,73 @@ Manual Opera GX checks after rebuilding and reloading the extension:
 The intended single inspector app is serialized; unrelated extension contexts or
 DevTools writes do not participate in that queue. Native clipboard writes and
 actual storage durability across Opera GX restarts remain manual verification.
+
+## Phase 6 — CSS and JSON palette export
+
+Palette details now include Export your palette: primary Copy CSS and outlined
+Download CSS / Download JSON controls. Empty palettes disable all three actions
+with an explanation. Clipboard confirmation appears only after a successful write,
+resets after two seconds, and keeps button dimensions stable. Errors and download-start feedback use a live region. A palette modification resets export feedback.
+
+`src/utils/paletteExport.ts` contains pure format/prefix/filename generation and
+the Blob download helper. CSS exports a `:root` block with properties named from the existing nearest-color
+lookup, e.g. `--dusty-plum: #6A4D5B;`. Color names use Unicode decomposition,
+combining-mark removal, lowercase ASCII kebab-case, and a `color` fallback for
+emoji-only/non-Latin-only/empty results. Digit-leading color names get `color-`.
+Repeated normalized names suffix every occurrence numerically, skipping reserved
+source slugs to avoid collisions such as Rose/Rose/Rose 1.
+Names never enter CSS as raw syntax; colors use the existing six-digit HEX
+validation/normalization. Filename bases still use safe palette-name prefixes (with a `palette` fallback) and avoid reserved
+Windows device names. Export never mutates saved palette objects.
+
+JSON contains only the actual saved name and ordered uppercase HEX colors, with
+two-space indentation and a trailing newline. No IDs or timestamps are exported.
+CSS and JSON use their respective MIME types and `.css` / `.json` extensions.
+Downloads use a hidden temporary anchor and a Blob object URL. The anchor is
+removed immediately; successful requests retain the object URL for 60 seconds
+before revocation to allow browser handoff. Failed requests revoke immediately.
+See [Blob URL lifecycle guidance](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Schemes/blob).
+The UI says “CSS downloaded!” or “JSON downloaded!” after initiation;
+an anchor click cannot confirm disk-write
+completion or detect a cancelled browser save prompt. Closing the extension window
+immediately may interrupt a download; keep it open until the browser accepts it.
+
+Verification:
+
+- `npm run build`, `npm run lint`: pass.
+- All 48 unit/repository tests pass, including seven new `paletteExport.test.mjs`
+  cases covering exact CSS/JSON, ordering, empty palettes, validation, accents,
+  punctuation/emoji/non-Latin names, safe filenames/identifiers, clipboard
+  success/failure, Blob content, deferred URL cleanup, and download errors.
+- `node tests/paletteExport.browser.mjs`: rendered copy confirmation/reset/error,
+  stable button dimensions, valid browser-parsed CSS, real headless Chrome Blob
+  downloads with verified CSS/JSON bytes, failure messages, empty-palette actions,
+  zero palette/history writes, 280–800px widths, and natural vertical scrolling.
+  Storage and clipboard are mocked; actual downloads run from the preview page
+  into an isolated temporary directory. This does not prove Opera GX extension
+  popup-window download behavior.
+- Existing palette management, palette picker, and history browser suites pass.
+
+Manual Opera GX checks:
+
+1. Rebuild/reload the extension and open a populated palette in its independent
+   window. Copy CSS and paste it into a text editor; verify variable names,
+   uppercase HEX values, and saved color order. Check the two-second Copied state.
+2. Download CSS and JSON from that same window. Confirm the browser accepts both,
+   filenames/extensions are safe, JSON parses, and contents match the palette.
+3. Rename to an accented, punctuation-heavy, or non-Latin name and export again;
+   filenames/CSS should remain safe, while JSON preserves the saved name.
+4. Open an empty palette and verify exports are disabled with an explanation.
+   Keyboard through actions and resize the window narrow/short.
+
+No schemas, storage operations, permissions, dependencies, or unrelated features
+were changed. Exports do not modify palette/history order, timestamps, or colors.
+
+
+Phase 6 polish verification: nine export unit tests now include semantic names,
+duplicate/slug/suffix collisions, accents and unusual name fallbacks, determinism,
+and copy/download consistency. The browser export test parses semantic CSS with
+repeated names, verifies identical clipboard/download bytes, checks both friendly
+started messages and failure feedback, and confirms JSON and filenames remain
+unchanged. Native Opera GX save completion remains a manual check; the friendly wording does
+not verify that the file was saved to disk.

@@ -1,4 +1,5 @@
-import { Pipette, Type } from 'lucide-react';
+import { Check, Copy, Pipette, Type } from 'lucide-react';
+import { useEyeDropper } from '../hooks/useEyeDropper';
 import type { InspectorMode } from './InspectorTabs';
 
 interface InspectorPanelProps {
@@ -6,8 +7,9 @@ interface InspectorPanelProps {
 }
 
 export function InspectorPanel({ mode }: InspectorPanelProps) {
+  const color = useEyeDropper();
   const isColors = mode === 'colors';
-  const Icon = isColors ? Pipette : Type;
+  const pickDisabled = !color.supported || color.isPicking || color.isCopying;
 
   return (
     <section
@@ -29,22 +31,46 @@ export function InspectorPanel({ mode }: InspectorPanelProps) {
               : 'Discover the fonts and styles behind any webpage.'}
           </p>
         </div>
-        <Icon
-          aria-hidden="true"
-          className="inspector-icon"
-          strokeWidth={1.25}
-        />
+        {isColors ? (
+          <button type="button" className="inspector-icon-button" aria-label="Pick a color"
+            onClick={color.pick} disabled={pickDisabled}>
+            <Pipette aria-hidden="true" className="inspector-icon" strokeWidth={1.25} />
+          </button>
+        ) : (
+          <Type aria-hidden="true" className="inspector-icon" strokeWidth={1.25} />
+        )}
       </div>
 
       <button
         type="button"
-        disabled
-        aria-disabled="true"
+        disabled={!isColors || pickDisabled}
+        onClick={isColors ? color.pick : undefined}
         className="inspector-action"
       >
-        <span>{isColors ? 'Pick a color' : 'Inspect a font'}</span>
-        <span>Coming soon</span>
+        <span>{isColors ? (color.isPicking ? 'Picking a color…' : 'Pick a color') : 'Inspect a font'}</span>
+        {!isColors && <span>Coming soon</span>}
       </button>
+      {isColors && (
+        <>
+          {!color.supported && (
+            <p className="color-feedback">Color picking is not supported in this browser.</p>
+          )}
+          {color.hex && (
+            <div className="color-result">
+              <span aria-hidden="true" className="color-swatch" style={{ backgroundColor: color.hex }} />
+              <span className="color-hex" aria-label={`HEX color ${color.hex}`}>{color.hex}</span>
+              <button type="button" className="copy-hex" onClick={color.copy}
+                disabled={color.isPicking || color.isCopying}>
+                <span className="copy-hex-content">
+                  {color.copied ? <Check aria-hidden="true" className="copy-icon" /> : <Copy aria-hidden="true" className="copy-icon" />}
+                  <span>{color.isCopying ? 'Copying…' : color.copied ? 'Copied!' : 'Copy HEX'}</span>
+                </span>
+              </button>
+            </div>
+          )}
+          <p role="status" aria-live="polite" aria-atomic="true" className="color-feedback">{color.message}</p>
+        </>
+      )}
     </section>
   );
 }

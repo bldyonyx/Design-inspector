@@ -440,3 +440,149 @@ button:focus-visible {
   white-space: nowrap;
   border: 0;
 }
+
+.archive-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.archive-count {
+  color: var(--muted-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.history-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+
+.history-swatch {
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--primary-text);
+  cursor: pointer;
+}
+
+.history-swatch:disabled {
+  cursor: not-allowed;
+}
+
+.history-view {
+  padding: 20px;
+}
+
+.history-view > .inspector-heading {
+  margin-top: 16px;
+}
+
+.history-view :focus-visible {
+  outline: 2px solid var(--primary-text);
+  outline-offset: 3px;
+}
+
+.history-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-text);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-text-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.history-text-button:disabled {
+  color: var(--muted-text);
+  cursor: not-allowed;
+}
+
+.view-all-colors {
+  margin-top: 8px;
+}
+
+.history-toolbar,
+.history-confirm-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.history-toolbar {
+  margin-top: 12px;
+}
+
+.history-confirm {
+  margin: 12px 0;
+  padding: 12px 0;
+  border-block: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.history-confirm p {
+  margin: 0 0 8px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px 32px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.history-hex {
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.history-select {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-select:hover:not(:disabled) {
+  background: var(--secondary-surface);
+}
+
+.history-select:disabled {
+  cursor: not-allowed;
+}

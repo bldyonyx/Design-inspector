@@ -205,3 +205,130 @@ the name summary, hidden selection announcement, disclosure keyboard behavior,
 copy confirmations, and layouts from 280 to 800px without chevron overlap or
 horizontal overflow. Native EyeDropper and real clipboard behavior remain manual
 Opera GX checks; their interaction paths were not changed.
+
+## Phase 3 — persistent color history
+
+Color history uses `chrome.storage.local` under
+`designInspector.colorHistory.v1`. The value is an array of
+`{ hex: "#AABBCC", capturedAt: 1730000000000 }` records; timestamps are Unix
+milliseconds. Only normalized uppercase six-digit HEX and capture time are
+stored. RGB, HSL, and approximate names remain derived values. The manifest adds
+only the `storage` permission, as required by the Chrome storage API.
+
+`src/storage/colorHistory.ts` validates records individually, retains valid
+neighbors, deduplicates by HEX using the newest timestamp, sorts newest first,
+and caps history at 100 unique colors. Missing history is empty. A corrupt
+container or failed read prevents writes instead of replacing unread data.
+Partially damaged arrays recover valid records and show a warning. Captures use
+serialized read/merge/write operations; failed captures remain in memory and are
+retried together with the next capture. Persistence is not reported as successful
+when a write fails. A completely corrupt container is preserved rather than
+silently overwritten; saving remains unavailable until that data is repaired.
+
+`useColorHistory` loads on opening, exposes loading/error states, and updates the
+preview optimistically. Failures show a non-blocking warning. The archive shows
+the total count and up to five newest swatches. Choosing a swatch displays its
+existing inspector details without capturing, writing, updating timestamps, or
+reordering history. Copy actions remain in those details to keep the preview
+compact. Fonts retains its empty state. No full history page is provided.
+
+Automated verification:
+
+- `npm run build` and `npm run lint`.
+- `node tests/colorHistory.test.mjs`: seven tests covering normalization,
+  validation, partial corruption, duplicates, recency, the 100-entry cap,
+  serialized captures, persistence across repository recreation, unavailable
+  storage, read/write failures, preservation of unread data, and retry recovery.
+- Existing `color.test.mjs`, `colorName.test.mjs`, and `background.test.mjs` pass.
+- Browser tests with mocked Chrome storage and EyeDropper verify newest-first
+  ordering, duplicate movement, selection without writes or reordering, reloading
+  saved history, optimistic failed saves and recovery, cancellation exclusion,
+  no overflow at 280/320/380/500/650/800px, and natural vertical scrolling.
+  The browser mock uses localStorage only as its test backing store; production
+  code uses Chrome extension storage exclusively.
+
+Required manual Opera GX checks:
+
+1. Build, reload the unpacked extension to activate its storage permission, and
+   close/reopen the inspector. Pick several real colors and verify the count and
+   five-swatch preview update.
+2. Sample an earlier color again: it moves to the front without increasing count.
+3. Select an older archive swatch: its details appear, but count/order stay fixed.
+   Copy HEX/RGB/HSL from the details and verify pasted values and confirmations.
+4. Close and reopen the inspector, then restart Opera GX and reopen it: stored
+   colors remain. Escape cancellation must not create entries.
+5. Inspect the extension's Local storage in DevTools: only the versioned history
+   key and HEX/timestamp records should be written by this feature.
+6. Resize narrow/short windows and keyboard through history swatches and inspector
+   controls. Check visible focus and normal page scrolling.
+
+Limitations: the preview exposes only five of up to 100 stored colors. Storage
+failures leave recent captures memory-only until a later capture retries saving;
+closing before an outstanding write finishes may lose that capture. Serialization
+covers this application's single inspector window, not concurrent writes from
+unrelated extension contexts or manual DevTools edits. Native storage durability
+across actual Opera GX shutdown is a manual check, not proved by browser mocks.
+
+## Phase 4 — full color history management
+
+The compact preview still shows five swatches and the total count. **View all**
+opens the single-column `ColorHistoryView` inside the same React app. **Back to
+inspector** restores the selected tab/color and returns focus to View all (or the
+selected tab if history is now empty). Entering history focuses its heading.
+The full list uses natural document scrolling and shows every stored color with
+Copy HEX and Delete controls. Copy success uses a two-second check icon plus a
+live announcement; failed clipboard writes do not show confirmation.
+
+Deletion updates the UI after storage confirms success. The most recent deletion
+can be undone for five seconds; Undo restores its original capture timestamp and
+does not overwrite a more recent capture of the same color. Clear history first
+shows an inline confirmation focused on Cancel and requires **Yes, clear history**.
+Clear-all has no Undo. Back/cancel never clears history. Empty history shows the
+existing dotted empty-state treatment. Deleting/clearing history does not remove
+the inspector's currently selected color.
+
+The versioned key, HEX/timestamp schema, 100-entry limit, and existing storage
+permission remain unchanged. Repository capture/delete/clear/restore operations
+share one serial queue, re-read current storage, and write only the history key.
+Failed reads prevent writes. Failed destructive operations leave visible/stored
+history intact and announce an error. Failed captures remain retryable; deleting
+or clearing one cannot resurrect it through an older optimistic snapshot. The
+hook overlays only newer pending captures onto successful operation results.
+Management actions are disabled while persistence is pending, with synchronous
+guards against repeated clicks. Undo expires or is replaced by a newer deletion;
+it is intentionally limited to the currently open history view.
+
+Tests:
+
+- `npm run build`, `npm run lint`
+- `node tests/colorHistory.test.mjs` (12 repository cases, including deletion,
+  persistence on reload, clear, Undo, mixed concurrent operations, failure safety,
+  and preventing resurrection of deleted unsaved captures)
+- `node tests/color.test.mjs`, `node tests/colorName.test.mjs`,
+  `node tests/background.test.mjs` (12 existing regression tests)
+- `node tests/historyView.browser.mjs` (optional integration test; Node 24+, a
+  production preview at `http://127.0.0.1:4173`, and isolated Chrome with remote
+  debugging on port 9222 required). Build, run `npm run preview -- --host 127.0.0.1`,
+  and start a dedicated headless Chrome profile with `--remote-debugging-port=9222`
+  before invoking it. This test mocks Chrome storage, clipboard, and EyeDropper;
+  its localStorage backing is test-only. It verifies View all/Back, focus,
+  selection preservation, copy, deletion/Undo, explicit clear confirmation/cancel,
+  write failures, empty state, persisted reload, and 280–800px layouts.
+
+Manual Opera GX regression:
+
+1. Reload the built extension, sample at least six colors, and verify the preview
+   remains five swatches. Open View all and check newest-first ordering/count.
+2. Copy a HEX and paste it into an editor. Delete one entry; close/reopen the
+   inspector to verify persistence. Delete another and Undo within five seconds;
+   verify its original order returns. Check Undo disappears after five seconds.
+3. Start Clear history and cancel: everything remains. Confirm on the second
+   attempt: the list and preview become empty. Close/reopen Opera GX to verify.
+4. Navigate back with a selected color and check the selected color/tab remain.
+   Keyboard through navigation/actions/confirmation and verify focus visibility.
+5. Resize narrow/short windows; check horizontal overflow and normal page scroll.
+
+Native clipboard, EyeDropper, and actual Chrome storage durability across an Opera
+GX restart remain manual checks. The repository serializes the intended single
+inspector app, not writes from unrelated extension contexts/DevTools. No router,
+new dependencies, permissions, windows, or unrelated features were introduced.

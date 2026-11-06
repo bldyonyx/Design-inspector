@@ -9,5 +9,8 @@
   "background": {
     "service_worker": "background.js"
   },
-  "minimum_chrome_version": "116"
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage"
+  ]
 }

@@ -1,14 +1,14 @@
 import { Pipette, Type } from 'lucide-react';
 import { ColorDetails } from './ColorDetails';
-import { useEyeDropper } from '../hooks/useEyeDropper';
+import type { useEyeDropper } from '../hooks/useEyeDropper';
 import type { InspectorMode } from './InspectorTabs';
 
 interface InspectorPanelProps {
   mode: InspectorMode;
+  color: ReturnType<typeof useEyeDropper>;
 }
 
-export function InspectorPanel({ mode }: InspectorPanelProps) {
-  const color = useEyeDropper();
+export function InspectorPanel({ mode, color }: InspectorPanelProps) {
   const isColors = mode === 'colors';
   const pickDisabled = !color.supported || color.isPicking;
 

@@ -9,7 +9,7 @@ type EyeDropperWindow = Window & {
   EyeDropper?: new () => EyeDropperInstance;
 };
 
-export function useEyeDropper() {
+export function useEyeDropper(onCapture?: (hex: string) => void) {
   const supported = typeof (window as EyeDropperWindow).EyeDropper === 'function';
   const [hex, setHex] = useState<string | null>(null);
   const [isPicking, setIsPicking] = useState(false);
@@ -26,6 +26,15 @@ export function useEyeDropper() {
       controller.current?.abort();
     };
   }, []);
+
+  const selectHistory = (value: string) => {
+    if (controller.current) return;
+    const hex = normalizeHex(value);
+    setSelectionId(id => id + 1);
+    setHex(hex);
+    setMessage('');
+    setSelectionAnnouncement(`Selected ${hex}.`);
+  };
 
   // Called directly by the click handler; no await precedes open(), preserving
   // the transient user activation required by the native API.
@@ -48,6 +57,7 @@ export function useEyeDropper() {
         setSelectionId(id => id + 1);
         setHex(value);
         setSelectionAnnouncement(`Selected ${value}.`);
+        onCapture?.(value);
       }
     } catch (error) {
       if (mounted.current) {
@@ -61,5 +71,5 @@ export function useEyeDropper() {
     }
   };
 
-  return { supported, hex, selectionId, isPicking, message, selectionAnnouncement, pick };
+  return { supported, hex, selectionId, isPicking, message, selectionAnnouncement, pick, selectHistory };
 }

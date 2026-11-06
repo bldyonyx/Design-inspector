@@ -332,3 +332,151 @@ Native clipboard, EyeDropper, and actual Chrome storage durability across an Ope
 GX restart remain manual checks. The repository serializes the intended single
 inspector app, not writes from unrelated extension contexts/DevTools. No router,
 new dependencies, permissions, windows, or unrelated features were introduced.
+
+## Phase 5.1 — saved palettes foundation
+
+Palettes use the separate `designInspector.savedPalettes.v1` local storage key:
+
+```ts
+{ id: string, name: string, colors: string[], createdAt: number, updatedAt: number }[]
+```
+
+IDs use `crypto.randomUUID()` with a cryptographically generated UUID v4 fallback.
+Names are trimmed, required, and limited to 50 characters. Identical names are
+allowed for different IDs. Colors are normalized six-digit uppercase HEX strings
+in insertion order, with duplicates prevented within each palette. The same HEX
+can belong to multiple palettes. Timestamps are Unix milliseconds. All repository
+read/modify/write operations are serialized and read current storage before
+writing only the palette key. History operations continue to write only their own
+key, so deleting/clearing history leaves palette colors intact.
+
+Validation recovers valid palettes and valid colors within partially malformed
+records, with a warning. A malformed root container or failed read prevents
+writes; unread existing palettes are never replaced with an empty list. Failed
+writes preserve the displayed/stored palette list and report an error. Duplicate
+additions return “Already saved” without writing or changing timestamps. Success
+feedback appears only after storage resolves. No permissions or dependencies were
+added.
+
+Saved Collections lists **all** palettes, each with its name, count, and a compact
+strip of up to eight swatches. Opening a palette displays every saved HEX/swatch
+in a read-only, naturally scrolling view. Back restores the inspector's selected
+color/tab and focuses the palette's preview button. Create palette opens a small
+labeled form and can create an empty palette. Add to palette beneath selected
+color details opens an inline picker: choose an existing palette or create a new
+one with the selected color. Escape/Close returns focus to the trigger. Colors
+opened from history use the same flow without capturing or reordering history.
+
+Automated checks:
+
+- `npm run build`, `npm run lint`.
+- `node tests/savedPalettes.test.mjs`: 10 new tests for creation, selected-color
+  creation, ordered additions, duplicates, cross-palette colors, names/HEX
+  validation, reload persistence, malformed records, storage failures, concurrent
+  updates, and independence from history deletion/clear.
+- All 24 existing utility, history repository, and window lifecycle tests pass.
+- `node tests/savedPalettes.browser.mjs`: creation/validation, picker focus and
+  Escape, sampled/historical colors, duplicate feedback, same-color membership,
+  no history mutations, read-only navigation with selected color/tab restoration,
+  failed writes without false success, mock reload persistence, history clear
+  independence, long-name layouts at 280–800px, and natural document scrolling.
+- Existing `node tests/historyView.browser.mjs` also passes.
+
+Both browser suites require Node 24+, a production preview on port 4173 and an
+isolated headless Chrome with remote debugging on port 9222, as described above.
+Chrome storage, EyeDropper and clipboard are mocked; test-only localStorage backs
+the storage mock. They do not prove actual Opera GX storage durability.
+
+Required manual Opera GX checks:
+
+1. Build and reload the unpacked extension. Create an empty named palette in
+   Saved Collections; verify whitespace/empty-name feedback and a long name.
+2. Sample a real color, open Add to palette, select the empty palette and add it.
+   Repeat to see Already saved. Create a second palette from the picker and
+   verify it starts with the selected color.
+3. Open a historical color and add it to a palette. Verify history ordering and
+   capture timestamps stay unchanged.
+4. Open each palette preview and inspect the read-only swatches/HEX values; Back
+   should preserve the selected inspector color/tab. Try keyboard navigation,
+   Escape from the picker, and narrow/short window resizing.
+5. Close/reopen the extension window, then restart Opera GX: palettes should
+   persist. Clear history and confirm palette colors remain.
+
+This phase intentionally omits palette renaming/deletion, color removal, exports,
+and palette actions in full history rows. There is no multi-context storage lock;
+serialization covers the intended single inspector application. Failed palette
+operations are not automatically replayed; retry them explicitly. Closing before
+an outstanding write completes may lose that operation.
+
+## Phase 5.2 — palette management and collections
+
+The inspector now previews only the **three most recently updated palettes**.
+View all collections opens the in-app `CollectionsView`, showing the total count,
+case-insensitive name search, every matching palette, and a working Back control.
+The main collections page scrolls with the document; it has no nested scroll
+panel. Empty collections and empty search results have separate feedback.
+
+Palette details support rename, explicit-confirmation deletion, Copy HEX, and
+individual color removal. Rename starts with the existing name, validates using
+the existing trimmed 50-character rule, and preserves ID, colors, and createdAt.
+Cancel does not write. Unchanged names do not write or update timestamps.
+Deletion explains that only the palette and its color associations are removed;
+color history is unaffected. A successful deletion returns to collections.
+Color removal preserves all other colors and palettes, including an empty palette
+when its last color is removed. The latest removal can be undone for five seconds,
+restoring the original list position. Undo expires on navigation. Copy and Remove
+are sibling controls of the Inspect color button and never navigate themselves.
+Inspect color reuses the history selection path, opens Colors with expanded
+details, and does not write or reorder history.
+
+The Existing palette picker now has a labeled search field followed by selectable
+buttons with previews and a Selected state. Buttons use standard keyboard Tab and
+Enter/Space activation. Selecting only chooses a destination; Add color to palette
+remains an explicit action. The two Existing/New mode tabs and creation flow are
+preserved. Only this picker result list has a bounded 220px vertical scroll area.
+Selected destination feedback remains visible when search hides the selected row.
+
+Storage remains `designInspector.savedPalettes.v1` with the same schema. Rename,
+delete, color removal, restore, create, and add share the repository's serial
+read/modify/write queue. Each operation re-reads the current data, validates it,
+and writes only the palette key. No migration, data clearing, permissions, or
+dependencies were added. Failed reads never cause writes; failed writes retain
+the prior persisted and visible state. A stale Undo cannot recreate a deleted
+palette. No-op mutations leave updatedAt unchanged.
+
+Verification:
+
+- Build and lint pass.
+- 41 unit/repository tests pass across `savedPalettes.test.mjs`,
+  `paletteSearch.test.mjs`, `colorHistory.test.mjs`, `color.test.mjs`,
+  `colorName.test.mjs`, and `background.test.mjs`.
+- `paletteManagement.browser.mjs` checks 300 palettes, compact preview, full
+  collection/search/empty states, bounded searchable picker, keyboard selection,
+  explicit add, rename validation/cancel/failures, remove/Undo, copy isolation,
+  inspection navigation, confirmed deletion/cancel/failure, reload persistence,
+  history independence, 280–800px layouts, and natural scrolling.
+- Existing `savedPalettes.browser.mjs` and `historyView.browser.mjs` also pass.
+  Browser suites use the isolated Chrome/preview setup described above and mocked
+  Chrome storage, EyeDropper, and clipboard; they are not native Opera GX tests.
+
+Manual Opera GX checks after rebuilding and reloading the extension:
+
+1. Open pre-existing palettes; confirm their IDs/colors remain. Create more than
+   three and verify the inspector preview stays compact. Browse/search all of
+   them through View all collections.
+2. Rename and cancel a rename; delete and cancel a deletion. Confirm successful
+   changes survive closing/reopening the inspector and restarting Opera GX.
+3. Remove a color, Undo within five seconds, and check order. Remove the last
+   color and verify the palette remains. Confirm history and another palette
+   containing the same color stay untouched.
+4. In the picker, search by name, keyboard-select a destination, and explicitly
+   add. Check duplicate feedback and Existing/New mode keyboard navigation.
+5. Inspect a palette color; verify Colors opens with expanded HEX/RGB/HSL details
+   and history order/timestamps do not change. Copy and Remove must not navigate.
+6. Check focus after Back, cancelling forms/confirmations, and operations; resize
+   from narrow to wide and short windows, verifying document scrolling and the
+   picker-only bounded result list.
+
+The intended single inspector app is serialized; unrelated extension contexts or
+DevTools writes do not participate in that queue. Native clipboard writes and
+actual storage durability across Opera GX restarts remain manual verification.

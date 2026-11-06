@@ -1,3 +1,5 @@
+import { PalettePicker } from './PalettePicker';
+import type { useSavedPalettes } from '../hooks/useSavedPalettes';
 import { Pipette, Type } from 'lucide-react';
 import { ColorDetails } from './ColorDetails';
 import type { useEyeDropper } from '../hooks/useEyeDropper';
@@ -5,10 +7,11 @@ import type { InspectorMode } from './InspectorTabs';
 
 interface InspectorPanelProps {
   mode: InspectorMode;
+  palettes: ReturnType<typeof useSavedPalettes>;
   color: ReturnType<typeof useEyeDropper>;
 }
 
-export function InspectorPanel({ mode, color }: InspectorPanelProps) {
+export function InspectorPanel({ mode, color, palettes }: InspectorPanelProps) {
   const isColors = mode === 'colors';
   const pickDisabled = !color.supported || color.isPicking;
 
@@ -57,7 +60,10 @@ export function InspectorPanel({ mode, color }: InspectorPanelProps) {
             <p className="color-feedback">Color picking is not supported in this browser.</p>
           )}
           {color.hex && (
-            <ColorDetails key={color.selectionId} hex={color.hex} disabled={color.isPicking} />
+            <div key={color.selectionId}>
+              <ColorDetails hex={color.hex} disabled={color.isPicking} />
+              <PalettePicker hex={color.hex} palettes={palettes} disabled={color.isPicking} />
+            </div>
           )}
           <p role="status" aria-live="polite" aria-atomic="true" className="visually-hidden">{color.selectionAnnouncement}</p>
           <p role="status" aria-live="polite" aria-atomic="true" className="color-feedback">{color.message}</p>

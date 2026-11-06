@@ -33,7 +33,7 @@ const paletteBefore=await evaluate(`localStorage.getItem('${paletteKey}')`),hist
 await evaluate("document.querySelector('[data-palette-id=export]').click()");await wait();
 const beforeSize=await evaluate("({width:document.querySelector('.palette-export .palette-primary').offsetWidth,height:document.querySelector('.palette-export .palette-primary').offsetHeight})");
 await evaluate("document.querySelector('.palette-export .palette-primary').click()");await wait();
-const expected=':root {\n  --dusty-plum-1: #6A4D5B;\n  --warm-linen: #E8D8CB;\n  --sand: #B9C89B;\n  --dusty-plum-2: #6B4D5B;\n}\n';
+const expected=':root {\n  --dusty-plum-1: #6A4D5B;\n  --warm-linen: #E8D8CB;\n  --pale-olive: #B9C89B;\n  --dusty-plum-2: #6B4D5B;\n}\n';
 assert.equal(await evaluate('copied'),expected);
 assert.match(await evaluate("document.querySelector('.palette-export .palette-primary').textContent"),/Copied!/);
 assert.deepEqual(await evaluate("({width:document.querySelector('.palette-export .palette-primary').offsetWidth,height:document.querySelector('.palette-export .palette-primary').offsetHeight})"),beforeSize);

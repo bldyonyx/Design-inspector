@@ -550,3 +550,18 @@ repeated names, verifies identical clipboard/download bytes, checks both friendl
 started messages and failure feedback, and confirms JSON and filenames remain
 unchanged. Native Opera GX save completion remains a manual check; the friendly wording does
 not verify that the file was saved to disk.
+
+## Phase 6.5 — expanded offline color naming
+
+Catalog v2 contains 849 curated names (781 xkcd CC0 survey entries plus the 68
+original project anchors). Full source/hash/license details, per-row curation,
+regressions, before/after names, and bundle/performance measurements are documented
+in [data/color-names/README.md](data/color-names/README.md).
+
+The baseline OKLab matcher is retained without hue weighting. #B9C89B now maps to
+Pale Olive rather than Sand. Names remain approximate: catalog updates can change
+inspector labels and semantic CSS property names, but never saved HEX data or JSON
+exports. The catalog works entirely offline. Regenerate with
+`node scripts/curateColorNames.mjs`; benchmark with
+`node scripts/benchmarkColorNames.mjs`. No new dependencies, permissions, schema
+changes, or UI changes were introduced.

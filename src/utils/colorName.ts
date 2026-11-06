@@ -22,20 +22,31 @@ export function hexToOklab(hex: string): OKLab {
   };
 }
 
-const candidates = colorNames.map(entry => ({ ...entry, lab: hexToOklab(entry.hex) }));
+interface NamedColor { readonly name: string; readonly hex: string }
 
-export function closestColorName(input: string): { name: string; hex: string; exact: boolean } {
-  const hex = normalizeHex(input);
-  const lab = hexToOklab(hex);
-  let nearest = candidates[0];
-  let bestDistance = Infinity;
-  for (const entry of candidates) {
-    const distance = (lab.L - entry.lab.L) ** 2 + (lab.a - entry.lab.a) ** 2 + (lab.b - entry.lab.b) ** 2;
-    // Stable dataset order breaks any exact distance ties.
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      nearest = entry;
+// Factory also allows deterministic tie behavior to be tested independently of
+// the production catalog. Coordinates are computed once per catalog, not lookup.
+export function createColorNameLookup(entries: readonly NamedColor[]) {
+  if (!entries.length) throw new Error('Color catalog must not be empty');
+  const candidates = entries.map(entry => ({ ...entry, hex: normalizeHex(entry.hex), lab: hexToOklab(entry.hex) }));
+  return (input: string): { name: string; hex: string; exact: boolean } => {
+    const hex = normalizeHex(input);
+    const lab = hexToOklab(hex);
+    let nearest = candidates[0];
+    let bestDistance = Infinity;
+    for (const entry of candidates) {
+      const distance = (lab.L - entry.lab.L) ** 2 + (lab.a - entry.lab.a) ** 2 + (lab.b - entry.lab.b) ** 2;
+      // Strict comparison preserves catalog order for equidistant candidates.
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        nearest = entry;
+      }
     }
-  }
-  return { name: nearest.name, hex: nearest.hex, exact: nearest.hex === hex };
+    return { name: nearest.name, hex: nearest.hex, exact: nearest.hex === hex };
+  };
+}
+
+const lookup = createColorNameLookup(colorNames);
+export function closestColorName(input: string): { name: string; hex: string; exact: boolean } {
+  return lookup(input);
 }

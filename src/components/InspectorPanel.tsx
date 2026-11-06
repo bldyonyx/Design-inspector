@@ -1,3 +1,4 @@
+import { useFontSelection } from '../hooks/useFontSelection';
 import { FontInspectionTest } from './FontInspectionTest';
 import { PalettePicker } from './PalettePicker';
 import type { useSavedPalettes } from '../hooks/useSavedPalettes';
@@ -14,6 +15,7 @@ interface InspectorPanelProps {
 
 export function InspectorPanel({ mode, color, palettes }: InspectorPanelProps) {
   const isColors = mode === 'colors';
+  const font = useFontSelection(!isColors);
   const pickDisabled = !color.supported || color.isPicking;
 
   return (
@@ -48,14 +50,19 @@ export function InspectorPanel({ mode, color, palettes }: InspectorPanelProps) {
 
       <button
         type="button"
-        disabled={!isColors || pickDisabled}
-        onClick={isColors ? color.pick : undefined}
+        disabled={isColors ? pickDisabled : font.phase !== 'idle'}
+        onClick={isColors ? color.pick : font.start}
         className="inspector-action"
       >
-        <span>{isColors ? (color.isPicking ? 'Picking a color…' : 'Pick a color') : 'Inspect a font'}</span>
-        {!isColors && <span>Coming soon</span>}
+        <span>{isColors ? (color.isPicking ? 'Picking a color…' : 'Pick a color') : font.phase === 'idle' ? 'Inspect a font' : font.phase === 'starting' ? 'Starting inspection…' : 'Inspection active…'}</span>
+
       </button>
-      {!isColors && <FontInspectionTest />}
+      {!isColors && <>
+        {font.phase !== 'idle' && <button type="button" className="secondary-action" onClick={font.cancel}>Cancel font inspection</button>}
+        <p role="status" aria-live="polite" className="color-feedback">{font.message}</p>
+        {font.fonts && <dl className="font-test-results" aria-label="Selected typography">{Object.entries(font.fonts).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl>}
+        <details className="font-development"><summary>Development prototype (non-interactive)</summary><FontInspectionTest /></details>
+      </>}
       {isColors && (
         <>
           {!color.supported && (

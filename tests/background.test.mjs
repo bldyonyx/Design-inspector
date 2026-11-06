@@ -59,7 +59,7 @@ function browser() {
       },
     },
   };
-  const restart = () => vm.runInNewContext(source, { chrome, console: { error: (...args) => errors.push(args) } });
+  const restart = () => vm.runInNewContext(source, { chrome, URL, console: { error: (...args) => errors.push(args) } });
   restart();
   return {
     windows, errors, restart,
@@ -122,8 +122,9 @@ test('captures the clicked tab across windows and worker restarts, never inspect
 test('invalidates on target navigation/close, ignores unrelated tabs, clears invalid toolbar clicks', async () => {
   const b = browser(); const key = 'designInspector.fontTarget.session.v1';
   await b.click(); await b.update(999, { status: 'loading' }); assert.ok(b.session[key]);
-  await b.update(90, { status: 'loading' }); assert.equal(b.session[key], undefined);
-  await b.click(); await b.closeTab(90); assert.equal(b.session[key], undefined);
+  await b.update(90, { status: 'loading' }); assert.equal((await b.getTarget()).code, 'TARGET_NAVIGATED');
+  await b.update(90, { url: 'https://other.example/' }); assert.equal((await b.getTarget()).code, 'TARGET_NAVIGATED_ORIGIN');
+  await b.click(); await b.closeTab(90); assert.equal((await b.getTarget()).code, 'TARGET_CLOSED');
   await b.click(); await b.click({}); assert.equal(b.session[key], undefined);
 });
 

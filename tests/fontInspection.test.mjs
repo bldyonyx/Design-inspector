@@ -10,7 +10,7 @@ function browser() {
   const state = { target, tab, calls: [], result: { pageUrl: target.url, fonts }, fail: false, closed: false, navigate: false, retarget: false };
   const api = {
     runtime: { sendMessage: async message => { assert.equal(message.type, 'designInspector.fontTarget.get'); return { ok: true, target: state.target }; } },
-    tabs: { get: async id => { assert.equal(id, 12); if (state.closed) throw Error('Closed'); return state.tab; } },
+    tabs: { get: async id => { assert.equal(id, 12); if (state.closed) throw Error('No tab with id: 12'); return state.tab; } },
     scripting: { executeScript: async injection => {
       state.calls.push(injection); if (state.fail) throw Error('Permission denied');
       if (state.navigate) state.tab = { ...state.tab, url: 'https://elsewhere.example/' };
@@ -33,17 +33,17 @@ test('missing/closed tabs and revoked permissions fail safely without guessing a
   const { state, api } = browser(); state.target = null;
   await assert.rejects(inspectFont(api), /No target tab/); assert.equal(state.calls.length, 0);
   const b = browser(); b.state.closed = true; await assert.rejects(inspectFont(b.api), /closed/);
-  const c = browser(); c.state.tab.url = undefined; await assert.rejects(inspectFont(c.api), /access expired/);
-  const d = browser(); d.state.fail = true; await assert.rejects(inspectFont(d.api), /restricted or access expired/);
+  const c = browser(); c.state.tab.url = undefined; await assert.rejects(inspectFont(c.api), /URL is unavailable/);
+  const d = browser(); d.state.fail = true; await assert.rejects(inspectFont(d.api), /browser reports that page access/);
 });
 
 test('rejects browser/extension pages, wrong windows and loading/navigation races', async () => {
   for (const url of ['chrome://settings/', 'opera://settings/', 'chrome-extension://id/index.html', 'file:///tmp/a.html']) {
     const b = browser(); b.state.target.url = url; await assert.rejects(inspectFont(b.api), /cannot be inspected/); assert.equal(b.state.calls.length, 0);
   }
-  const b = browser(); b.state.tab.windowId = 99; await assert.rejects(inspectFont(b.api), /page changed/);
-  const c = browser(); c.state.tab.status = 'loading'; await assert.rejects(inspectFont(c.api), /page changed/);
-  const d = browser(); d.state.navigate = true; await assert.rejects(inspectFont(d.api), /page changed/);
+  const b = browser(); b.state.tab.windowId = 99; await assert.rejects(inspectFont(b.api), /moved/);
+  const c = browser(); c.state.tab.status = 'loading'; await assert.rejects(inspectFont(c.api), /still loading/);
+  const d = browser(); d.state.navigate = true; await assert.rejects(inspectFont(d.api), /another origin/);
   const e = browser(); e.state.retarget = true; await assert.rejects(inspectFont(e.api), /target changed/);
 });
 
@@ -63,5 +63,5 @@ test('unavailable messaging and malformed targets do not inject anything', async
     const b = browser(); b.state.target = target; await assert.rejects(inspectFont(b.api)); assert.equal(b.state.calls.length, 0);
   }
   const b = browser(); b.api.runtime.sendMessage = async () => { throw Error('Worker unavailable'); };
-  await assert.rejects(inspectFont(b.api), /unavailable/); assert.equal(b.state.calls.length, 0);
+  await assert.rejects(inspectFont(b.api), /background worker/); assert.equal(b.state.calls.length, 0);
 });

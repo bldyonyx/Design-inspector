@@ -58,13 +58,17 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status !== 'loading' && change.url === undefined) return;
   void updateTarget(async () => {
     const saved = (await chrome.storage.session.get(fontTargetKey))[fontTargetKey];
-    if (saved?.id === tabId) await chrome.storage.session.remove(fontTargetKey);
+    if (saved?.id === tabId) {
+      let invalidated = saved.invalidated === 'TARGET_NAVIGATED_ORIGIN' ? saved.invalidated : 'TARGET_NAVIGATED';
+      if (change.url) { try { if (new URL(change.url).origin !== new URL(saved.url).origin) invalidated = 'TARGET_NAVIGATED_ORIGIN'; } catch { /* URL may be unavailable. */ } }
+      await chrome.storage.session.set({ [fontTargetKey]: { ...saved, invalidated } });
+    }
   }).catch(() => { targetUnavailable = true; });
 });
 chrome.tabs.onRemoved.addListener(tabId => {
   void updateTarget(async () => {
     const saved = (await chrome.storage.session.get(fontTargetKey))[fontTargetKey];
-    if (saved?.id === tabId) await chrome.storage.session.remove(fontTargetKey);
+    if (saved?.id === tabId) await chrome.storage.session.set({ [fontTargetKey]: { ...saved, invalidated: 'TARGET_CLOSED' } });
   }).catch(() => { targetUnavailable = true; });
 });
 
@@ -91,13 +95,15 @@ chrome.action.onClicked.addListener(tab => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== 'designInspector.fontTarget.get') return false;
   if (sender.id !== chrome.runtime.id || sender.url !== inspectorUrl || (sender.frameId !== undefined && sender.frameId !== 0)) {
-    sendResponse({ ok: false, error: 'Font targeting is only available in the inspector window.' });
+    sendResponse({ ok: false, code: 'BACKGROUND_MESSAGE_FAILED', error: 'Font targeting is only available in the inspector window.' });
     return false;
   }
   void targetQueue.then(async () => {
     if (targetUnavailable) throw new Error('Target unavailable');
     const data = await chrome.storage.session.get(fontTargetKey);
-    sendResponse({ ok: true, target: data[fontTargetKey] ?? null });
-  }).catch(() => sendResponse({ ok: false, error: 'The target tab is unavailable. Click the toolbar icon on the webpage again.' }));
+    const target = data[fontTargetKey];
+    if (target?.invalidated) sendResponse({ ok: false, code: target.invalidated });
+    else sendResponse({ ok: true, target: target ?? null });
+  }).catch(() => sendResponse({ ok: false, code: 'BACKGROUND_MESSAGE_FAILED', error: 'The target tab is unavailable. Click the toolbar icon on the webpage again.' }));
   return true;
 });

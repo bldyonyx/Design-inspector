@@ -13,7 +13,7 @@ const injection = await send('Page.addScriptToEvaluateOnNewDocument', { source: 
 window.fontTarget={id:123,windowId:50,url:'http://127.0.0.1:4173/font-fixture',token:'first'};
 window.chrome={runtime:{sendMessage:async()=>({ok:true,target:window.fontTarget})},
  storage:{local:{get:async()=>({}),set:async()=>{throw Error('Unexpected write')}}},
- tabs:{get:async id=>{if(window.closedTarget)throw Error('Closed');return {...window.fontTarget,id,status:'complete'}}},
+ tabs:{get:async id=>{if(window.closedTarget)throw Error('No tab with id: 123');return {...window.fontTarget,id,status:'complete'}}},
  scripting:{executeScript:async options=>{
    window.fontCalls=(window.fontCalls||0)+1;
    if(options.target.tabId!==123)throw Error('Wrong target');
@@ -35,11 +35,11 @@ await evaluate(`(async()=>{
 await evaluate("document.getElementById('tab-fonts').click()");
 const wait = () => new Promise(resolve => setTimeout(resolve, 80));
 await wait();
-await evaluate("document.querySelector('.font-test button').click()");await wait();
+await evaluate("document.querySelector('.font-development').open=true;document.querySelector('.font-test button').click()");await wait();
 assert.deepEqual(await evaluate("[...document.querySelectorAll('.font-test-results dd')].map(element=>element.textContent)"), ['Georgia, serif','23px','700','31px','1.5px']);
 assert.equal(await evaluate('fontCalls'), 1);
 await evaluate("denyInjection=true;document.querySelector('.font-test button').click()");await wait();
-assert.match(await evaluate("document.querySelector('.font-test [role=status]').textContent"), /restricted or access expired/);
+assert.match(await evaluate("document.querySelector('.font-test [role=status]').textContent"), /browser reports that page access/);
 assert.equal(await evaluate("document.querySelector('.font-test-results')"), null);
 await evaluate("denyInjection=false;invalidFont=true;document.querySelector('.font-test button').click()");await wait();
 assert.match(await evaluate("document.querySelector('.font-test [role=status]').textContent"), /incomplete/);

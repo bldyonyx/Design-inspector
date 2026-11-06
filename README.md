@@ -578,3 +578,28 @@ Opera GX manual steps, and Phase 7.2 boundaries are in
 [docs/font-inspection.md](docs/font-inspection.md). Native toolbar-granted access
 and end-to-end Opera GX injection remain manual checks; automated browser tests
 use mocked Chrome transport and execute the bundled function on real fixture DOM.
+
+## Phase 7.2 — interactive font selection
+
+Fonts → Inspect a font now activates temporary text-element hover/click selection
+in the toolbar-captured webpage. It highlights without layout changes, returns the
+same five computed typography properties, supports Escape/Cancel, and cleans up
+on completion, errors, target loss, inspector close, or a five-second heartbeat
+lease expiry. A session identifier and validated Chrome sender metadata reject
+stale/untrusted results. The old deterministic prototype remains clearly separated
+in a closed development disclosure.
+
+Permissions, saved schemas, and color features are unchanged. All 66 unit tests
+and six browser suites pass; native cross-window Opera GX selection/focus still
+requires the exact manual checks in [docs/font-inspection.md](docs/font-inspection.md).
+That document also covers MV3 suspension, timer-throttling limitations, and the
+main-frame-only scope. No font history or final results dashboard is implemented.
+
+## Phase 7.2.1 — activation diagnostics
+
+Font activation now distinguishes target loss/navigation, browser-reported access
+failure, injection, controller initialization and messaging errors. Partial
+activation is cleaned up before retry; cleanup cannot hide the original error.
+Navigation requires recapturing the page with its toolbar icon. Permissions and
+saved schemas are unchanged. See [the audit and Opera matrix](docs/font-inspection.md#phase-721--activation-diagnostics-and-reliability)
+for automated coverage, native Chrome setup and remaining manual checks.

@@ -1,3 +1,4 @@
+import { browserFontError } from './errors.ts';
 import { fontBrowserApi, type FontBrowserApi } from './browserApi.ts';
 import { inspectPageFont } from './inspectPageFont.ts';
 import { readTarget, verifyTarget } from './targetTab.ts';
@@ -9,9 +10,7 @@ export async function inspectFont(api: FontBrowserApi = fontBrowserApi()) {
   let results: Awaited<ReturnType<FontBrowserApi['scripting']['executeScript']>>;
   try {
     results = await api.scripting.executeScript({ target: { tabId: target.id, frameIds: [0] }, world: 'ISOLATED', func: inspectPageFont });
-  } catch {
-    throw new Error('Cannot inspect this page. It may be restricted or access expired. Click the toolbar icon on a normal webpage and retry.');
-  }
+  } catch (error) { throw browserFontError(error, 'prototype-injection', 'INJECTION_FAILED'); }
   const current = await readTarget(api);
   if (current.token !== target.token) throw new Error('The target changed during inspection. Click Test font inspection again.');
   await verifyTarget(api, target);

@@ -701,3 +701,7 @@ button:focus-visible {
 .font-test-results > div { padding: 6px 0; border-top: 1px solid var(--border); }
 .font-test-results dt { font-size: 12px; color: var(--muted-text); }
 .font-test-results dd { margin: 0; overflow-wrap: anywhere; user-select: text; }
+
+.font-development { margin-top: 20px; font-size: 13px; line-height: 1.5; color: var(--muted-text); }
+.font-development summary { cursor: pointer; }
+.font-development summary:focus-visible { outline: 2px solid var(--primary-text); outline-offset: 3px; }

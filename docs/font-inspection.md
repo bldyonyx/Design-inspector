@@ -411,3 +411,62 @@ Remaining boundaries: main-frame only, no iframe/shadow-root traversal, computed
 CSS rather than rendered-font identification. Browser/page freezes or background
 window timer throttling can delay heartbeat/lease cleanup. No specific failing
 user website was supplied, so site-specific resolution still needs Opera testing.
+
+## Phase 7.3 — typography preview
+
+The Fonts tab now leads with “find your font.” and Inspect a font. The normal UI
+no longer mounts the development prototype. Empty/active states use a restrained
+specimen; selected results show Aa Bb Cc and a pangram above native, keyboard
+operable Font details. Original computed values remain unchanged in details.
+Existing selection, errors, navigation guidance, permissions and color data flows
+are unchanged. No animation is added, including for reduced-motion users.
+
+Preview styling is presentation only: specimen size is bounded to 40–64px,
+sentence size to 16–24px, line-height ratio to 1.2–1.8, and spacing to 0–3px.
+Words may wrap anywhere in narrow windows. Negative spacing is neutralized to
+avoid overlapping letters. These bounds intentionally prevent pixel-perfect
+reproduction of extreme source typography.
+
+### Font availability decision
+
+A webpage's FontFaceSet and @font-face definitions are scoped to its document;
+computed font-family only supplies a requested stack. The extension tries that
+stack using local/bundled fonts, via React's individual style properties, without
+copying CSS rules or fetching page fonts. FontFaceSet.check() is not proof of
+actual face identity: a nonexistent family can return true when no matching
+unloaded font faces exist. See MDN's FontFaceSet.check documentation:
+https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet/check
+
+Therefore every selected specimen says “Preview may use a fallback font.” Even
+installed fonts do not prove the webpage used the same face, subset or version.
+No arbitrary font requests, CSS injection, CORS/CSP workarounds, new permissions,
+font persistence or export are added. Next phase could investigate explicit,
+user-controlled local font selection and stronger rendered-face evidence before
+making availability claims.
+
+### Phase 7.3 Opera GX checks (manual)
+
+1. Build and reload dist at opera://extensions; close the old inspector window.
+2. On a loaded webpage, click the toolbar icon, choose Fonts, inspect and select
+   text. Check the large specimen, pangram and subtle fallback notice. Compare
+   all five expanded detail values to DevTools computed styles.
+3. Repeat with a webfont unavailable locally, a long font stack, tiny/huge sizes,
+   zero/large line heights and negative/large letter spacing. Details must retain
+   exact values while the specimen stays readable and wraps.
+4. Tab to Font details, press Enter/Space to toggle; verify visible focus. Resize
+   through 280, 380 and 800px widths and short heights; scroll to all content.
+5. Test active feedback, Escape, UI Cancel, retry, closed/navigated/restricted
+   targets and toolbar recapture. Enable reduced motion and repeat.
+6. Smoke-test Colors, history, saved palettes, and CSS/JSON exports.
+
+Automated preview checks are in fontPreview.test.mjs and the updated
+fontInspection.browser.mjs; the real DOM/controller flow remains covered by
+fontSelection.browser.mjs, with native activation in fontActivation.native.browser.mjs.
+Native Opera GX verification remains manual.
+
+Phase 7.3 verification completed: npm run build; npm run lint (no warnings);
+node --test tests/*.test.mjs (11 files passed); all six UI browser suites passed
+(fontInspection, fontSelection, historyView, savedPalettes, paletteManagement,
+paletteExport); native MV3 activation suite passed for HTML, strict CSP/Trusted
+Types, XHTML, same-origin navigation diagnosis and toolbar recapture. Browser
+checks used isolated headless Chrome profiles; they do not replace Opera GX.

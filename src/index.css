@@ -705,3 +705,13 @@ button:focus-visible {
 .font-development { margin-top: 20px; font-size: 13px; line-height: 1.5; color: var(--muted-text); }
 .font-development summary { cursor: pointer; }
 .font-development summary:focus-visible { outline: 2px solid var(--primary-text); outline-offset: 3px; }
+
+.font-preview { min-width: 0; margin-top: 24px; padding: 24px 0; border-top: 1px solid var(--border); }
+.font-specimen { margin: 0; font-size: clamp(40px, 12vw, 64px); line-height: 1.4; }
+.font-specimen, .font-sentence { overflow-wrap: anywhere; white-space: normal; padding-block: 8px; }
+.font-sentence { margin: 12px 0 20px; }
+.font-preview-note { margin: 12px 0 0; color: var(--muted-text); font-size: 12px; line-height: 1.6; }
+.font-preview-empty { padding-block: 32px; }
+.font-details { border-top: 1px solid var(--border); font-size: 14px; line-height: 1.5; }
+.font-details summary { padding: 16px 0; cursor: pointer; }
+.font-details summary:focus-visible { outline: 2px solid var(--primary-text); outline-offset: 3px; }

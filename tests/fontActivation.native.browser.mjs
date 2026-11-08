@@ -64,6 +64,13 @@ try {
       const next = await toolbar(`${url}?navigation=1`); assert.match(await activate(next), /Inspection active/);
       await evaluate(next, "[...document.querySelectorAll('button')].find(button=>button.textContent==='Cancel font inspection').click()"); await wait();
     }
+    if (path === '/html') await evaluate(page, `Object.assign(document.querySelector('h1').style,{fontStyle:'oblique 12deg',fontStretch:'87.5%',fontVariationSettings:'"wght" 425.5, "wdth" 90',fontFeatureSettings:'"liga" 0, "ss01" 1',fontOpticalSizing:'none'})`);
+    // Exercise actual computed-style extraction and extended result transport.
+    assert.match(await activate(ui), /Inspection active/);
+    await evaluate(page, `document.querySelector('h1').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}))`); await wait(400);
+    const expected = await evaluate(page, `(()=>{const s=getComputedStyle(document.querySelector('h1'));return [s.fontFamily,s.fontSize,s.fontWeight,s.fontStyle,s.fontStretch,s.lineHeight,s.letterSpacing,s.fontVariationSettings,s.fontFeatureSettings,s.fontOpticalSizing]})()`);
+    assert.deepEqual(await evaluate(ui, `[...document.querySelectorAll('.font-details dd')].map(e=>e.textContent)`), expected);
+    assert.equal(await evaluate(page, "document.querySelectorAll('[data-design-inspector-font]').length"), 0);
     console.log(`PASS native activation and cancellation: ${path}`);
   }
   console.log('PASS native same-origin navigation diagnosis and toolbar recapture/retry. Real MV3 grants, injection, messaging, background, and independent window.');

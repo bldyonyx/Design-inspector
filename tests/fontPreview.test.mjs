@@ -18,3 +18,17 @@ test('extreme sizes, spacing, zero size and normal metrics stay readable',()=>{
  assert.equal(previewStyle({...fonts,letterSpacing:'99999px'}).letterSpacing,'3px');
  assert.equal(previewStyle({...fonts,lineHeight:'normal',letterSpacing:'normal'}).lineHeight,1.4);
 });
+
+test('preview applies validated style/stretch but keeps face-specific settings as metadata', () => {
+ const source = {...fonts, fontStyle:'oblique 12deg', fontStretch:'87.5%',
+  fontVariationSettings:'"opsz" 144', fontFeatureSettings:'"liga" off', fontOpticalSizing:'auto'};
+ const style = previewStyle(source);
+ assert.equal(style.fontStyle, source.fontStyle); assert.equal(style.fontStretch, source.fontStretch);
+ assert.equal(style.fontOpticalSizing, 'none');
+ assert.equal(style.fontVariationSettings, undefined); assert.equal(style.fontFeatureSettings, undefined);
+ assert.equal(source.fontOpticalSizing, 'auto');
+ for (const additions of [{}, {fontStyle:'italic; color:red', fontStretch:'url(x)'}]) {
+  const result = previewStyle({...fonts, ...additions});
+  assert.equal(result.fontStyle, 'normal'); assert.equal(result.fontStretch, 'normal');
+ }
+});

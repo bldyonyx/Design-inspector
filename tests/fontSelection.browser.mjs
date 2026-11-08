@@ -65,9 +65,16 @@ assert.equal(await evaluate("fixture.contentWindow.testShadow.firstChild.style.w
 await evaluate('fixture.contentWindow.scrollTo(0,20)');await wait();
 assert.equal(await evaluate("fixture.contentWindow.testShadow.firstChild.style.top"),await evaluate("fixture.contentDocument.querySelector('#heading').getBoundingClientRect().top+'px'"));
 await evaluate("fixture.contentDocument.querySelector('#heading').dispatchEvent(new fixture.contentWindow.MouseEvent('click',{bubbles:true,cancelable:true}))");await wait();await cleanup();
-assert.deepEqual(await evaluate("[...document.querySelectorAll('[aria-label=\"Selected typography\"] dd')].map(e=>e.textContent)"),['Georgia, serif','23px','700','31px','1.5px']);
-assert.deepEqual(await evaluate('Object.keys(lastSelection.fonts)'),['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing']);
+assert.deepEqual(await evaluate("[...document.querySelectorAll('[aria-label=\"Selected typography\"] dd')].map(e=>e.textContent)"),['Georgia, serif','23px','700','normal','100%','31px','1.5px','normal','normal','auto']);
+assert.deepEqual(await evaluate('Object.keys(lastSelection.fonts)'),['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','fontStyle','fontStretch','fontVariationSettings','fontFeatureSettings','fontOpticalSizing']);
 assert.equal(await evaluate("'text' in lastSelection"),false);
+// Unsupported computed fields produce an otherwise usable legacy-compatible result.
+await evaluate(`fixture.contentWindow.originalStyle=fixture.contentWindow.getComputedStyle;
+fixture.contentWindow.getComputedStyle=(element)=>new Proxy(fixture.contentWindow.originalStyle(element),{get(style,key){if(['fontStyle','fontStretch','fontVariationSettings','fontFeatureSettings','fontOpticalSizing'].includes(key))return '';return Reflect.get(style,key,style)}})`);
+await activate();
+await evaluate("fixture.contentDocument.querySelector('#heading').dispatchEvent(new fixture.contentWindow.MouseEvent('click',{bubbles:true,cancelable:true}))");await wait();await cleanup();
+assert.equal(await evaluate("[...document.querySelectorAll('.font-details dd')].filter(e=>e.textContent==='Unavailable').length"),5);
+await evaluate("fixture.contentWindow.getComputedStyle=fixture.contentWindow.originalStyle");
 await activate();await hover('#link');
 await evaluate("fixture.contentDocument.querySelector('#link span').dispatchEvent(new fixture.contentWindow.MouseEvent('click',{bubbles:true,cancelable:true}))");await wait();await cleanup();assert.equal(await evaluate('fixture.contentWindow.linkClicks'),0);
 const oldMessage=await evaluate('lastSelection');
@@ -87,5 +94,5 @@ assert.match(await evaluate("document.querySelector('.inspector-panel').textCont
 await evaluate("denyInjection=true;document.querySelector('.inspector-action').click()");await wait();await cleanup();assert.match(await evaluate("document.querySelector('.inspector-panel').textContent"),/could not inject/);await evaluate('denyInjection=false');
 await activate();await evaluate('dropHeartbeat=true');await wait(6200);await cleanup();await evaluate('dropHeartbeat=false');
 for(const width of [280,320,380,500,650,800]){await send('Emulation.setDeviceMetricsOverride',{width,height:300,deviceScaleFactor:1,mobile:false});assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);}
-console.log('PASS: real bundled controller hover filtering/alignment, heading/link selection and suppression, five-property result, stale rejection, Escape/UI/unmount cancellation, repeated activation, retarget/closed/permission errors, lease cleanup, 280–800px. Native Chrome grants and transport mocked.');
+console.log('PASS: real bundled controller hover filtering/alignment, heading/link selection and suppression, ten-property and unavailable-field results, stale rejection, Escape/UI/unmount cancellation, repeated activation, retarget/closed/permission errors, lease cleanup, 280–800px. Native Chrome grants and transport mocked.');
 await send('Page.removeScriptToEvaluateOnNewDocument',{identifier:injection.identifier});ws.close();

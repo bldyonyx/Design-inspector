@@ -55,3 +55,13 @@ test('cancellation before target resolution completes prevents injection', async
   await assert.rejects(startSelection(b.api, 'cancelled', () => false), /cancelled before activation/);
   assert.equal(b.state.calls.length, 0);
 });
+
+test('selection transports extended typography and rejects malformed new fields', () => {
+ const b = browser();
+ const session = {id:'one', target:b.target};
+ const sender = {id:'test',tab:{id:b.target.id},frameId:0,url:b.target.url};
+ const extended = {...fonts, fontStyle:'italic', fontStretch:'100%', fontVariationSettings:'normal', fontFeatureSettings:'"liga" 0', fontOpticalSizing:'none'};
+ const message = {type:'designInspector.fontSelection.result',sessionId:'one',status:'selected',pageUrl:b.target.url,fonts:extended};
+ assert.deepEqual(selectionResult(message,sender,session,'test'), {status:'selected',fonts:extended});
+ assert.throws(()=>selectionResult({...message,fonts:{...extended,fontStyle:'inherit; color:red'}},sender,session,'test'));
+});

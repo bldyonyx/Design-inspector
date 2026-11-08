@@ -1,4 +1,4 @@
-import type { FontResult } from './types';
+import { isAdditionalFontValue, type FontResult } from './types.ts';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -12,6 +12,11 @@ export function previewStyle(fonts: FontResult, specimen = true) {
   return {
     fontFamily: fonts.fontFamily,
     fontWeight: fonts.fontWeight,
+    fontStyle: isAdditionalFontValue('fontStyle', fonts.fontStyle) ? fonts.fontStyle : 'normal',
+    fontStretch: isAdditionalFontValue('fontStretch', fonts.fontStretch) ? fonts.fontStretch : 'normal',
+    // Axes/features may address a different face here; keep those as metadata.
+    // Optical auto would adapt to our normalized size, rather than the source.
+    fontOpticalSizing: 'none' as const,
     fontSize: `${size}px`,
     lineHeight: clamp(ratio, 1.2, 1.8),
     letterSpacing: `${Number.isFinite(spacing) ? clamp(spacing, 0, 3) : 0}px`,

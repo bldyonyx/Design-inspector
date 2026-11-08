@@ -53,11 +53,26 @@ await evaluate("document.querySelector('.font-details summary').focus()");
 await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
 await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});await wait();
 assert.equal(await evaluate("document.querySelector('.font-details').open"),true);
-assert.deepEqual(await evaluate("[...document.querySelectorAll('.font-details dd')].map(e=>e.textContent)"),Object.values(fonts));
+assert.deepEqual(await evaluate("[...document.querySelectorAll('.font-details dd')].map(e=>e.textContent)"),[fonts.fontFamily,fonts.fontSize,fonts.fontWeight,'Unavailable','Unavailable',fonts.lineHeight,fonts.letterSpacing,'Unavailable','Unavailable','Unavailable']);
 for(const width of [280,320,380,500,650,800]){
  await send('Emulation.setDeviceMetricsOverride',{width,height:300,deviceScaleFactor:1,mobile:false});
  assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);
  assert.equal(await evaluate("document.querySelector('.font-specimen').scrollWidth<=document.querySelector('.font-specimen').clientWidth"),true);
+}
+// Extended values and long axis lists survive messaging and wrap in the same details.
+const extended={...fonts,fontStyle:'italic',fontStretch:'87.5%',fontVariationSettings:Array(35).fill('"wght" 425.5').join(', '),fontFeatureSettings:'"liga" 0, "ss01" 1',fontOpticalSizing:'auto'};
+await activate();
+await evaluate(`for(const listener of uiListeners)listener({type:'designInspector.fontSelection.result',sessionId:lastStart.sessionId,status:'selected',pageUrl:fontTarget.url,fonts:${JSON.stringify(extended)}},{id:'test',tab:{id:123},frameId:0,url:fontTarget.url})`);await wait();
+assert.equal(await evaluate("document.querySelector('.font-specimen').style.fontStyle"),'italic');
+assert.equal(await evaluate("document.querySelector('.font-specimen').style.fontStretch"),'87.5%');
+assert.equal(await evaluate("document.querySelector('.font-specimen').style.fontOpticalSizing"),'none');
+await evaluate("document.querySelector('.font-details').open=true");
+assert.deepEqual(await evaluate("[...document.querySelectorAll('.font-details dt')].map(e=>e.textContent)"),['CSS font family','Font size','Font weight','Font style','Font stretch','Line height','Letter spacing','Variation settings','Feature settings','Optical sizing']);
+assert.deepEqual(await evaluate("[...document.querySelectorAll('.font-details dd')].map(e=>e.textContent)"),[extended.fontFamily,extended.fontSize,extended.fontWeight,extended.fontStyle,extended.fontStretch,extended.lineHeight,extended.letterSpacing,extended.fontVariationSettings,extended.fontFeatureSettings,extended.fontOpticalSizing]);
+for(const width of [280,320,380,500,650,800]){
+ await send('Emulation.setDeviceMetricsOverride',{width,height:300,deviceScaleFactor:1,mobile:false});
+ assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);
+ assert.equal(await evaluate("[...document.querySelectorAll('.font-details dd')].every(e=>e.scrollWidth<=e.clientWidth)"),true);
 }
 await evaluate('scrollTo(0,document.documentElement.scrollHeight)');assert.ok(await evaluate('scrollY>0'));
 await activate();await evaluate("[...document.querySelectorAll('button')].find(e=>e.textContent==='Cancel font inspection').click()");await wait();

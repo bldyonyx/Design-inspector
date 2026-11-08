@@ -65,3 +65,60 @@ test('unavailable messaging and malformed targets do not inject anything', async
   const b = browser(); b.api.runtime.sendMessage = async () => { throw Error('Worker unavailable'); };
   await assert.rejects(inspectFont(b.api), /background worker/); assert.equal(b.state.calls.length, 0);
 });
+
+const extra = {
+  fontStyle: 'oblique -12deg', fontStretch: '87.5%',
+  fontVariationSettings: '"wght" 425.5, "wdth" 90',
+  fontFeatureSettings: '"liga" off, "ss01" 2', fontOpticalSizing: 'auto',
+};
+test('additional typography retains exact values and supports five-property results', async () => {
+  assert.deepEqual(validateFontResult({...fonts, ...extra}), {...fonts, ...extra});
+  assert.deepEqual(validateFontResult({...fonts, ...Object.fromEntries(Object.keys(extra).map(key => [key, '']))}), fonts);
+  const b = browser(); b.state.result.fonts = {...fonts, ...extra};
+  assert.deepEqual((await inspectFont(b.api)).fonts, {...fonts, ...extra});
+  for (const [key, values] of Object.entries({
+    fontStyle: ['normal', 'italic', 'oblique', 'oblique 90deg'],
+    fontStretch: ['normal', 'condensed', 'semi-expanded', '0%', '100%'],
+    fontVariationSettings: ['normal', "'opsz' 12", '"wght" -1.25e2'],
+    fontFeatureSettings: ['normal', '"liga"', "'kern' on", '"ss01" 0'],
+    fontOpticalSizing: ['none', 'auto'],
+  })) for (const value of values) assert.equal(validateFontResult({...fonts, [key]:value})[key], value);
+});
+test('additional properties reject malformed, unbounded and declaration-like values', () => {
+  for (const key of Object.keys(extra)) {
+    for (const value of [null, 12, {}, ' ', 'x'.repeat(513), 'normal\n', 'normal\u007f', 'normal; color:red', 'url(https://example.com/font)', 'var(--font)']) {
+      assert.throws(() => validateFontResult({...fonts, [key]:value}), undefined, key + ': ' + value);
+    }
+  }
+  for (const [key, value] of [
+    ['fontStyle','oblique 91deg'], ['fontStretch','-1%'],
+    ['fontVariationSettings','"weight" 400'], ['fontVariationSettings','"wght" Infinity'],
+    ['fontVariationSettings','"wght" 1e999'], ['fontFeatureSettings','"liga" -1'],
+    ['fontOpticalSizing','normal'],
+  ]) assert.throws(() => validateFontResult({...fonts, [key]:value}));
+  const long = Array(35).fill('"wght" 400').join(', ');
+  assert.equal(validateFontResult({...fonts, fontVariationSettings:long}).fontVariationSettings, long);
+});
+
+test('development extractor reads the same ten computed properties without text values', () => {
+  const names = ['document', 'window', 'Node', 'location'];
+  const previous = names.map(name => Object.getOwnPropertyDescriptor(globalThis, name));
+  const computed = {...fonts, ...extra};
+  const element = {
+    closest: () => null,
+    childNodes: [{nodeType:3}],
+    getBoundingClientRect: () => ({width:100,height:20}),
+  };
+  try {
+    Object.defineProperties(globalThis, {
+      document:{configurable:true,value:{querySelectorAll:()=>[element]}},
+      window:{configurable:true,value:{getComputedStyle:()=>({...computed,visibility:'visible',display:'block'})}},
+      Node:{configurable:true,value:{TEXT_NODE:3}},
+      location:{configurable:true,value:{href:'https://example.com/'}},
+    });
+    assert.deepEqual(inspectPageFont(), {pageUrl:'https://example.com/',fonts:computed});
+    assert.deepEqual(validateFontResult(inspectPageFont().fonts), computed);
+  } finally {
+    names.forEach((name,index)=>{if(previous[index])Object.defineProperty(globalThis,name,previous[index]);else delete globalThis[name];});
+  }
+});

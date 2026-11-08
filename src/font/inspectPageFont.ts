@@ -12,6 +12,9 @@ export function inspectPageFont() {
     return { pageUrl: location.href, fonts: {
       fontFamily: style.fontFamily, fontSize: style.fontSize, fontWeight: style.fontWeight,
       lineHeight: style.lineHeight, letterSpacing: style.letterSpacing,
+      fontStyle: style.fontStyle, fontStretch: style.fontStretch,
+      fontVariationSettings: style.fontVariationSettings, fontFeatureSettings: style.fontFeatureSettings,
+      fontOpticalSizing: style.fontOpticalSizing,
     } };
   }
   return null;

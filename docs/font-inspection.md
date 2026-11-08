@@ -470,3 +470,34 @@ node --test tests/*.test.mjs (11 files passed); all six UI browser suites passed
 paletteExport); native MV3 activation suite passed for HTML, strict CSP/Trusted
 Types, XHTML, same-origin navigation diagnosis and toolbar recapture. Browser
 checks used isolated headless Chrome profiles; they do not replace Opera GX.
+
+## Phase 7.4A — typography metadata accuracy
+
+Both extractors now capture font style, stretch, variation settings, feature
+settings, and optical sizing alongside the original five computed properties.
+These remain CSS metadata, not evidence of the face that rendered any glyph.
+The existing isolated-world injection, sender/session validation, target checks,
+and selection cleanup are unchanged. No permissions or dependencies were added.
+
+New fields are optional for compatibility with five-property results. Missing or
+empty computed fields display as “Unavailable”; present values must satisfy
+bounded property-specific grammars (512 characters, no control characters).
+Validation does not evaluate CSS, load fonts, or query font availability.
+The details preserve accepted computed strings, use “CSS font family”, and retain
+the existing wrapping layout.
+
+The approximate preview applies validated style and stretch through individual
+React style properties; unsupported browser values are ignored by CSS.
+Variation and feature settings remain metadata because the inspector may use a
+different face. Optical sizing is explicitly disabled because preview sizes are
+normalized. Existing size/line-height/spacing bounds and the fallback warning
+remain. No page text, font URLs, or font files are collected.
+
+Verification: build, lint, 79 unit tests, all six existing browser UI suites, and
+native Chrome MV3 activation/selection/cancellation tests pass. Coverage includes
+legacy and unavailable fields, malformed/long values, extended message transport,
+non-default computed properties, strict CSP/XHTML, and 280–800px wrapping.
+Opera GX still requires a manual reload of dist and comparison of all ten detail
+values against getComputedStyle on normal, italic, condensed, and variable-font
+text. Check narrow resizing, cancellation/Escape, navigation/retry, and the
+persistent fallback notice. These tests do not prove actual rendered-face identity.

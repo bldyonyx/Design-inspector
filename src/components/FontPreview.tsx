@@ -2,9 +2,11 @@ import type { FontResult } from '../font/types';
 import { previewStyle } from '../font/previewStyle';
 
 const properties = [
-  ['fontFamily', 'Font family'], ['fontSize', 'Font size'],
-  ['fontWeight', 'Font weight'], ['lineHeight', 'Line height'],
-  ['letterSpacing', 'Letter spacing'],
+  ['fontFamily', 'CSS font family'], ['fontSize', 'Font size'],
+  ['fontWeight', 'Font weight'], ['fontStyle', 'Font style'],
+  ['fontStretch', 'Font stretch'], ['lineHeight', 'Line height'],
+  ['letterSpacing', 'Letter spacing'], ['fontVariationSettings', 'Variation settings'],
+  ['fontFeatureSettings', 'Feature settings'], ['fontOpticalSizing', 'Optical sizing'],
 ] as const;
 
 export function FontPreview({ fonts, active }: { fonts: FontResult | null; active: boolean }) {
@@ -22,7 +24,7 @@ export function FontPreview({ fonts, active }: { fonts: FontResult | null; activ
     <details className="font-details" key={JSON.stringify(fonts)}>
       <summary>Font details</summary>
       <dl className="font-test-results" aria-label="Selected typography">
-        {properties.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{fonts[key]}</dd></div>)}
+        {properties.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{fonts[key] || 'Unavailable'}</dd></div>)}
       </dl>
     </details>
   </div>;

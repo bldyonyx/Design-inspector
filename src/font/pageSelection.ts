@@ -80,7 +80,10 @@ export function startPageSelection(options: { sessionId: string; url: string; le
       event.preventDefault(); event.stopImmediatePropagation();
       const style = getComputedStyle(selected);
       finish('selected', { fontFamily: style.fontFamily, fontSize: style.fontSize, fontWeight: style.fontWeight,
-        lineHeight: style.lineHeight, letterSpacing: style.letterSpacing });
+        lineHeight: style.lineHeight, letterSpacing: style.letterSpacing,
+        fontStyle: style.fontStyle, fontStretch: style.fontStretch,
+        fontVariationSettings: style.fontVariationSettings, fontFeatureSettings: style.fontFeatureSettings,
+        fontOpticalSizing: style.fontOpticalSizing });
     } catch { finish('error'); }
   };
   const keydown = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); finish('cancelled'); } };

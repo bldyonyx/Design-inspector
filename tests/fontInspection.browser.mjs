@@ -43,7 +43,7 @@ await activate();
 assert.match(await evaluate("document.querySelector('.font-preview-empty').textContent"), /Choose text/);
 const fonts={fontFamily:'"Unavailable Preview Face '+ 'VeryLongName'.repeat(30)+'", serif',fontSize:'99999px',fontWeight:'700',lineHeight:'0px',letterSpacing:'9999px'};
 await evaluate(`for(const listener of uiListeners)listener({type:'designInspector.fontSelection.result',sessionId:lastStart.sessionId,status:'selected',pageUrl:fontTarget.url,fonts:${JSON.stringify(fonts)}},{id:'test',tab:{id:123},frameId:0,url:fontTarget.url})`);await wait();
-assert.equal(await evaluate("document.querySelector('.font-preview-note').textContent"),'Preview may use a fallback font.');
+assert.match(await evaluate("document.querySelector('.font-preview-note').textContent"),/Approximate preview.*Preview may use a fallback font/);
 assert.equal(await evaluate("document.querySelector('.font-specimen').style.fontSize"),'64px');
 assert.equal(await evaluate("document.querySelector('.font-specimen').style.lineHeight"),'1.2');
 assert.equal(await evaluate("document.querySelector('.font-specimen').style.letterSpacing"),'3px');

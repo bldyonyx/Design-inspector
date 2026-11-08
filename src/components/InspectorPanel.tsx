@@ -56,7 +56,7 @@ export function InspectorPanel({ mode, color, palettes }: InspectorPanelProps) {
       {!isColors && <>
         {font.phase !== 'idle' && <button type="button" className="secondary-action" onClick={font.cancel}>Cancel font inspection</button>}
         <p role="status" aria-live="polite" className="color-feedback">{font.message}</p>
-        <FontPreview fonts={font.fonts} active={font.phase !== 'idle'} />
+        <FontPreview fonts={font.fonts} active={font.phase !== 'idle'} pagePreview={font.pagePreview} />
       </>}
       {isColors && (
         <>

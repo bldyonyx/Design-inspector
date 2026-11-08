@@ -3,11 +3,14 @@ import { readTarget, verifyTarget } from '../font/targetTab';
 import { useEffect, useRef, useState } from 'react';
 import { cancelSelection, checkSelection, selectionApi, selectionResult, startSelection, type SelectionApi, type SelectionSession } from '../font/selectionSession';
 import type { FontResult } from '../font/types';
+import { usePageFontPreview } from './usePageFontPreview';
 
 export function useFontSelection(enabled: boolean) {
   const [phase, setPhase] = useState<'idle' | 'starting' | 'active'>('idle');
   const [fonts, setFonts] = useState<FontResult | null>(null);
   const [message, setMessage] = useState('');
+  const pagePreview = usePageFontPreview(enabled);
+  const selected = useRef<{ session: SelectionSession; fonts: FontResult } | null>(null);
   const active = useRef<SelectionSession | null>(null);
   const generation = useRef(0);
   const mounted = useRef(true);
@@ -42,6 +45,7 @@ export function useFontSelection(enabled: boolean) {
             const target = await readTarget(api); await verifyTarget(api, session.target);
             if (target.token !== session.target.token) throw new FontInspectionError('TARGET_NAVIGATED', 'result-target');
             if (active.current?.id !== session.id || !mounted.current) return;
+            selected.current = { session, fonts: result.fonts };
             setFonts(result.fonts); end('Font selected.', false);
           })().catch(error => { if (active.current?.id === session.id) end(diagnoseFontError(error, 'result-validation').message); });
         } else end(result.status === 'cancelled' ? 'Font inspection cancelled.' : 'Font selection failed. Please try again.', false);
@@ -72,6 +76,7 @@ export function useFontSelection(enabled: boolean) {
   }, [enabled]);
   const start = async () => {
     if (busy.current || active.current || !enabled) return;
+    selected.current = null; pagePreview.reset();
     busy.current = true; const operation = ++generation.current;
     setPhase('starting'); setFonts(null); setMessage('Starting font inspection…');
     let session: SelectionSession | undefined;
@@ -100,5 +105,10 @@ export function useFontSelection(enabled: boolean) {
       }
     }
   };
-  return { phase, fonts, message, start, cancel: () => cancelCurrent.current() };
+  return { phase, fonts, message, start, cancel: () => { pagePreview.reset(); cancelCurrent.current(); },
+    pagePreview: { ...pagePreview, generate: () => {
+      const value = selected.current;
+      if (value) void pagePreview.generate(value.session, value.fonts);
+    } },
+  };
 }

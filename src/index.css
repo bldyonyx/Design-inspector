@@ -711,6 +711,8 @@ button:focus-visible {
 .font-specimen, .font-sentence { overflow-wrap: anywhere; white-space: normal; padding-block: 8px; }
 .font-sentence { margin: 12px 0 20px; }
 .font-preview-note { margin: 12px 0 0; color: var(--muted-text); font-size: 12px; line-height: 1.6; }
+.font-page-specimen { display: block; width: 100%; max-width: 480px; height: auto; }
+.font-preview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .font-preview-empty { padding-block: 32px; }
 .font-details { border-top: 1px solid var(--border); font-size: 14px; line-height: 1.5; }
 .font-details summary { padding: 16px 0; cursor: pointer; }

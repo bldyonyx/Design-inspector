@@ -501,3 +501,80 @@ Opera GX still requires a manual reload of dist and comparison of all ten detail
 values against getComputedStyle on normal, italic, condensed, and variable-font
 text. Check narrow resizing, cancellation/Escape, navigation/retry, and the
 persistent fallback notice. These tests do not prove actual rendered-face identity.
+
+## Phase 7.4C — optional page-font specimen
+
+The approximate extension preview remains the default. After a successful live
+text selection, **Preview with page fonts** explicitly requests a fixed specimen
+from the captured page. No selection, hover, tab switch, or mount generates one
+automatically. A concise note explains that drawing may cause the browser to
+load additional font subsets. The raster replaces the specimen within the same
+preview area; Font details stay unchanged. **Use approximate preview** discards
+the raster. During generation, the approximate specimen stays visible, the
+request action is disabled, and **Cancel page preview** is available. Failures
+show **Page preview unavailable** and retain the approximate specimen.
+
+The production path shares the Phase 7.4B renderer, transport, and canvas view
+with the retained comparison harness. `useFontSelection` retains the accepted
+selection's original target/session alongside its typography; it never retargets
+an old result to the currently active page. `usePageFontPreview` uses an abort
+controller and operation generation. New inspections, cancellation, leaving the
+Fonts mode, pagehide, and unmount invalidate pending requests and release raster
+state. Late returns cannot replace a newer selection, including one with
+identical computed values. Keyboard focus returns to the preview action after
+generation/cancellation only if focus would otherwise be lost to the body.
+
+Transport remains a separate one-shot isolated-main-frame scripting result.
+Before and after injection it verifies the original tab, window, exact URL,
+target generation, loading/navigation/closed state, and cancellation signal.
+It rejects extra/wrong frames, mismatched request IDs/URLs, incorrect structures,
+and unbounded raster data. The RGBA8 bitmap remains 480 × 144: 276,480 raw bytes
+encoded as exactly 368,640 base64 characters. It is painted directly from bytes,
+without arbitrary image URLs or image-file decoders. No raster enters storage,
+history, logs, or production selection-result messages. The page canvas is
+detached and its backing store is released immediately; no page listener or DOM
+node is installed for rendering. Permissions, CSP, dependencies, Colors, and
+background messaging are unchanged.
+
+Only the extension-owned specimen strings are drawn. No selected text, input
+values, viewport pixels, stylesheet rules, or font-file bytes are collected.
+No explicit font fetch or font-loading call is used. Browser rendering can still
+request an unused unicode-range subset, and cancellation cannot undo a request
+already triggered. The first raster may use fallback; retrying is explicit via
+switching back and requesting again. This is a sample in the page's font
+environment, not an exact identification or screenshot. Fixed resolution,
+clipping, baselines, axes/features/optical sizing, and the existing main-frame
+selection scope remain limitations.
+
+### Verification and manual Opera GX checks
+
+Build and lint pass. The unit suite covers 85 cases. All six existing browser UI
+suites plus `tests/pageFontPreview.browser.mjs` pass. The new UI suite covers
+explicit keyboard activation, focus recovery, no automatic rendering, success,
+mode switching, unsupported/failed canvas, malformed payloads, cancellation,
+navigation/retarget/close, identical replacement selections, mode/pagehide
+cleanup, unchanged ten-property details, and widths from 280 to 800px.
+`tests/fontSpecimen.native.browser.mjs --production` covers seven real-MV3
+fixture scenarios, including page-only and variable fonts and subset requests.
+The existing native activation/navigation/cancellation suite also passes.
+Native browser tests use isolated test profiles; they do not add debugger
+permission to the extension. The retained harness build/test instructions are in
+`experiments/font-preview/README.md`.
+
+1. Build, reload `dist` at `opera://extensions`, and close/reopen the old window.
+2. Select live text on a normal webpage. Confirm the approximate preview appears
+   first and no raster request starts until **Preview with page fonts** is clicked.
+3. Click it on a page with a custom font. Check that the specimen changes in the
+   existing preview area, the status becomes **Page-font preview available**, and
+   the ten computed details remain intact. Switch back using keyboard and mouse.
+4. Try system fonts, missing families, italic/bold, variable fonts, and long
+   stacks. Compare with DevTools separately; neither preview proves face identity.
+5. Watch Network on a unicode-range font page. Confirm the subset-loading note is
+   visible before activation. A first sample can use fallback; switch back and
+   request again after loading if needed.
+6. During a pending request, cancel, start another selection, switch to Colors,
+   navigate/reload/close the target, or retarget using another toolbar icon.
+   Confirm no late raster appears and failures retain the approximate preview.
+7. Check 280–800px resizing, keyboard focus, expanded details, document scrolling,
+   Colors/EyeDropper, history, palettes, and exports. Image-based font previews,
+   shadow roots, and iframes remain outside the supported selection scope.
